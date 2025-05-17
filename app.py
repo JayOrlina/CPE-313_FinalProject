@@ -6,8 +6,8 @@ from ultralytics import YOLO
 import os
 import requests
 
-MODEL_URL = "https://your_link_to_model.com/Yolov11best.pt"
-MODEL_PATH = "Yolov11best.pt"
+MODEL_URL = "https://drive.google.com/file/d/1Ww-Dv55SxFrSk-D59O7TYs9gLRFZP5Ls/view?usp=drive_link"
+MODEL_PATH = "RTDETRbest.pt"
 
 def download_model():
     if not os.path.exists(MODEL_PATH):
