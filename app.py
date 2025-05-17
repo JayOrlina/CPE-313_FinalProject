@@ -1,31 +1,53 @@
 import streamlit as st
-import torch
+from PIL import Image
 import numpy as np
 import cv2
-from PIL import Image
+from ultralytics import YOLO
+import os
+import requests
 
-# Load the custom YOLOv11 model for drowsiness detection
+MODEL_URL = "https://your_link_to_model.com/Yolov11best.pt"
+MODEL_PATH = "Yolov11best.pt"
+
+def download_model():
+    if not os.path.exists(MODEL_PATH):
+        with st.spinner("Downloading model..."):
+            r = requests.get(MODEL_URL)
+            with open(MODEL_PATH, "wb") as f:
+                f.write(r.content)
+
+download_model()
+
+# Load YOLOv11 model
 @st.cache_resource
 def load_model():
-    model = torch.hub.load('JayOrlina/CPE-313_FinalProject', 'custom', path='Yolov11best.pt', source='github')
-    return model
+    return YOLO(MODEL_PATH)
 
 model = load_model()
 
-st.title("Drowsiness Detection with YOLOv11")
-st.markdown("Upload an image of a person to detect signs of drowsiness.")
+# Set Streamlit title
+st.title("Drowsiness Detection App 😴")
+st.write("Upload an image (e.g., a video frame) to detect drowsiness.")
 
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+# Upload image
+uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
+
+class_names = {0: "Awake", 1: "Drowsy"}
 
 if uploaded_file is not None:
-    # Load image and convert to numpy
     image = Image.open(uploaded_file).convert("RGB")
-    image_np = np.array(image)
+    st.image(image, caption="Uploaded Image", use_container_width=True)
 
-    # Run inference
-    results = model(image_np)
+    # Predict
+    with st.spinner("Detecting..."):
+        results = model.predict(source=image, conf=0.1)
+        boxes = results[0].boxes
 
-    # Display results
-    st.image(np.squeeze(results.render()), caption="Detection Results", use_column_width=True)
-    st.write("Detection Details:")
-    st.dataframe(results.pandas().xyxy[0])
+        if boxes and len(boxes.cls) > 0:
+            plotted_img = results[0].plot()
+            plotted_rgb = cv2.cvtColor(plotted_img, cv2.COLOR_BGR2RGB)
+            st.image(plotted_rgb, caption="Detection Result", use_container_width=True)
+            detected_classes = [class_names.get(int(cls), f"Class {int(cls)}") for cls in boxes.cls]
+            st.success(f"Detected: {', '.join(detected_classes)}")
+        else:
+            st.warning("No drowsiness detected.")
